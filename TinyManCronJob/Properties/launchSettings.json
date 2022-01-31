@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TinyManCronJob": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
