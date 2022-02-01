@@ -62,7 +62,7 @@ while (true)
             pools[toBuy] = await client.FetchPoolAsync(assets[assetSell], assets[toBuy]);
             if (config.TradeType == 1)
             {
-                quotes[toBuy] = pools[toBuy].CalculateFixedOutputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], toSellFullAmount), 0.05);
+                quotes[toBuy] = pools[toBuy].CalculateFixedInputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], toSellFullAmount), 0.05);
             }
             else
             {
