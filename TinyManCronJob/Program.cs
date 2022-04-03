@@ -57,18 +57,31 @@ while (true)
         if (toSellVolume <= 0) throw new Exception("Invalid sell volume");
         ulong multiplier = config.ToTradeQMultiplier ?? 1000000;
         ulong toSellFullAmount = multiplier * Convert.ToUInt64(toSellVolume);
+        ulong reservesMax = 0;
+
         foreach (var toBuy in config.OtherAssets)
         {
             pools[toBuy] = await client.FetchPoolAsync(assets[assetSell], assets[toBuy]);
+
+            reservesMax = Math.Max(reservesMax, pools[toBuy].Asset1Reserves);
+        }
+
+        foreach (var toBuy in config.OtherAssets)
+        {
+            var volumeMultiplier = Convert.ToDecimal(pools[toBuy].Asset1Reserves) / reservesMax;
+            var tosell = Convert.ToUInt64(Math.Round(toSellFullAmount * volumeMultiplier));
             if (config.TradeType == 1)
             {
-                quotes[toBuy] = pools[toBuy].CalculateFixedInputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], toSellFullAmount), 0.05);
+                // sell
+                quotes[toBuy] = pools[toBuy].CalculateFixedInputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], tosell), 0.05);
             }
             else
             {
-                var quote = pools[toBuy].CalculateFixedOutputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], toSellFullAmount), 0.05);
+                // buy
+                var quote = pools[toBuy].CalculateFixedOutputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[assetSell], tosell), 0.05);
                 quotes[toBuy] = pools[toBuy].CalculateFixedInputSwapQuote(new Tinyman.V1.Model.AssetAmount(assets[toBuy], quote.AmountIn.Amount), 0.05);
             }
+            Console.WriteLine($"{toBuy}: {quotes[toBuy].AmountIn.Amount} {quotes[toBuy].AmountOut.Amount}");
             actions[toBuy] = Tinyman.V1.Action.Swap.FromQuote(quotes[toBuy]);
         }
 
@@ -106,7 +119,14 @@ while (true)
         }
         else
         {
-            Console.Error.WriteLine($"continuation.Status == {continuation.Status}");
+            Console.Error.WriteLine($"continuation.Status == {continuation.Status}"); 
+            if (continuation?.Result != null)
+            {
+                foreach (var result in continuation.Result)
+                {
+                    Console.WriteLine($"TxId: {result?.TxId}");
+                }
+            }
         }
     }
     catch (Exception ex)
