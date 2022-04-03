@@ -1,19 +1,36 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using Algorand.V2;
 using Tinyman.V1.Model;
 using TinyManCronJob;
 
 Console.WriteLine($"");
 var configData = File.ReadAllText("appsettings.json");
-var config = Newtonsoft.Json.JsonConvert.DeserializeObject<Config>(configData);
-if (config == null || string.IsNullOrEmpty(config.ApiHost))
+var config = Newtonsoft.Json.JsonConvert.DeserializeObject<TinyManCronJob.Model.Config>(configData);
+if (config == null || string.IsNullOrEmpty(config.Algod.Host))
 {
     Console.Error.WriteLine("Invalid configuration");
     throw new Exception("Fatal.. please make sure you have correct appsettings");
 }
+var algodHttpClient = HttpClientConfigurator.ConfigureHttpClient(config.Algod.Host, config.Algod.Token, config.Algod.Header);
+
+var algodClient = new Algorand.V2.Algod.DefaultApi(algodHttpClient)
+{
+    BaseUrl = config.Algod.Host,
+};
+
+Console.WriteLine($"C {DateTimeOffset.Now} Bot started. \n");
+
+var indexerHttpClient = HttpClientConfigurator.ConfigureHttpClient(config.Indexer.Host, config.Indexer.Token, config.Indexer.Header);
+
+var lookupApiClient = new Algorand.V2.Indexer.LookupApi(indexerHttpClient)
+{
+    BaseUrl = config.Indexer.Host,
+};
+
+var client = new Tinyman.V1.TinymanMainnetClient(algodClient, lookupApiClient);
 var myAccount = new Algorand.Account(config.MyAccountMnemonic);
 var rand = new Random();
-var client = new Tinyman.V1.TinymanMainnetClient(config.ApiHost, config.ApiKey);
 
 var assets = new Dictionary<ulong, Asset>();
 var assetSell = config.BaseAsset ?? 452399768;
@@ -119,7 +136,7 @@ while (true)
         }
         else
         {
-            Console.Error.WriteLine($"continuation.Status == {continuation.Status}"); 
+            Console.Error.WriteLine($"continuation.Status == {continuation.Status}");
             if (continuation?.Result != null)
             {
                 foreach (var result in continuation.Result)
